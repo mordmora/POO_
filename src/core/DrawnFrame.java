@@ -145,7 +145,6 @@ public class DrawnFrame extends javax.swing.JFrame {
                         return;
                     }
                 }
-
                 for (LogicGate gate : gates) {
                     Point outputPoint = gate.getOutputPoint();
                     if (isNear(clickPoint, outputPoint)) {
@@ -160,6 +159,8 @@ public class DrawnFrame extends javax.swing.JFrame {
                             if (isNear(clickPoint, inputPoint)) {
                                 // Conectar el cable desde la compuerta de origen a la de destino
                                 Cable cable = new Cable(selectedSourceGate, gate, i);
+                                gate.inputCables.add(cable);
+                                selectedSourceGate.outputCables.add(cable);
                                 cables.add(cable); // Asumiendo que tienes una lista de cables
                                 selectedSourceGate = null; // Reiniciar para la siguiente conexión
                                 repaint(); // Redibujar la interfaz gráfica
@@ -167,7 +168,6 @@ public class DrawnFrame extends javax.swing.JFrame {
                             }
                         }
                     }
-
                 }
                 if (selectedSwitch != null) {
                     for (LogicGate gate : gates) {
@@ -177,6 +177,7 @@ public class DrawnFrame extends javax.swing.JFrame {
                                 // Conectar el cable desde el SWITCH a la compuerta de destino
                                 Cable cable = new Cable(selectedSwitch, gate, i);
                                 cables.add(cable); // Añadir el cable a la lista de cables
+                                selectedSwitch.inputCables.add(cable);
                                 selectedSwitch = null; // Reiniciar para la siguiente conexión
                                 repaint(); // Redibujar la interfaz gráfica
                                 return;
@@ -245,8 +246,6 @@ public class DrawnFrame extends javax.swing.JFrame {
         root = parser.parse();
         root.accept(prt);
 
-        // Llama a la función interpretarYConectarExpresion con el inputStr
-        interpretarYConectarExpresion(inputStr);
     }
 
     @SuppressWarnings("unchecked")
@@ -498,7 +497,6 @@ public class DrawnFrame extends javax.swing.JFrame {
         int x = START_X + (index % MAX_GATES_PER_ROW) * GAP;
         int y = START_Y + (index / MAX_GATES_PER_ROW) * GAP;
 
-        // Ajustar posición a la cuadrícula
         x = (x / gridSize) * gridSize;
         y = (y / gridSize) * gridSize;
 
@@ -738,123 +736,6 @@ public class DrawnFrame extends javax.swing.JFrame {
         ledGate.toggle(); // Cambiar el estado al agregarlo
         repaint();
     }//GEN-LAST:event_BtLEDActionPerformed
-
-    public void interpretarYConectarExpresion(String expresion) {
-        Stack<LogicGate> pilaCompuertas = new Stack<>();
-        Stack<LogicGate> subExpresionPila = new Stack<>();
-
-        int posX = 50;  // Posición inicial en X
-        int posY = 50;  // Posición inicial en Y
-        int espaciadoX = 80;  // Espacio horizontal entre compuertas
-        boolean enParentesis = false;
-
-        for (char c : expresion.toCharArray()) {
-            LogicGate nuevaCompuerta = null;
-
-            switch (c) {
-                case '(':  // Inicia una subexpresión
-                    enParentesis = true;
-                    break;
-
-                case ')':  // Finaliza una subexpresión
-                    enParentesis = false;
-                    if (!subExpresionPila.isEmpty()) {
-                        LogicGate resultGate = subExpresionPila.pop();
-                        pilaCompuertas.push(resultGate); // Agregar el resultado de la subexpresión a la pila principal
-                    }
-                    break;
-
-                case 'a':
-                case 'b':
-                case 'c':
-                case 'd': // Se consideran los switches
-                    if (enParentesis) {
-                        crearSwitch(c, posX, subExpresionPila);
-                    } else {
-                        crearSwitch(c, posX, pilaCompuertas);
-                    }
-                    posX += espaciadoX;  // Mover a la derecha para el próximo elemento
-                    break;
-
-                case '&': // Compuerta AND
-                    if (enParentesis) {
-                        nuevaCompuerta = crearAndGate(posX, posY, subExpresionPila);
-                        if (nuevaCompuerta != null) {
-                            subExpresionPila.push(nuevaCompuerta);
-                        }
-                    } else {
-                        nuevaCompuerta = crearAndGate(posX, posY, pilaCompuertas);
-                        if (nuevaCompuerta != null) {
-                            pilaCompuertas.push(nuevaCompuerta);
-                        }
-                    }
-                    posX += espaciadoX;
-                    break;
-
-                default:
-                    System.out.println("Operador no reconocido: " + c);
-                    break;
-            }
-        }
-
-        // Conectar la salida de la última compuerta de la pila principal con el próximo elemento
-        if (!pilaCompuertas.isEmpty()) {
-            LogicGate ultimaCompuerta = pilaCompuertas.pop();
-
-            // Verificar si hay otra compuerta en la pila para conectar
-            if (!pilaCompuertas.isEmpty()) {
-                LogicGate siguienteCompuerta = pilaCompuertas.peek();
-
-                // Obtener el índice de entrada disponible en la siguiente compuerta
-                int availableIndex = siguienteCompuerta.getNextAvailableInputIndex();
-                if (availableIndex != -1) {
-                    // Crear el cable y agregarlo a la lista de cables
-                    Cable cable = new Cable(ultimaCompuerta, siguienteCompuerta, availableIndex);
-                    siguienteCompuerta.addInputCable(cable, availableIndex);
-                    cables.add(cable);  // Agregar el cable a la lista de cables
-                }
-            }
-        }
-
-        conectarSalidas(); // Conectar las salidas de switches
-        repaint();  // Refrescar la interfaz gráfica para mostrar los cambios
-    }
-
-    private ANDGate crearAndGate(int posX, int posY, Stack<LogicGate> pilaCompuertas) {
-        // Solo crear la compuerta AND si hay al menos dos entradas en la pila
-        if (pilaCompuertas.size() >= 2) {
-            ANDGate nuevaCompuerta = new ANDGate(posX, posY, 2); // Crear la compuerta AND
-            gates.add(nuevaCompuerta);
-
-            // Conectar los dos últimos SWITCH a la compuerta AND
-            LogicGate entrada1 = pilaCompuertas.pop(); // Sacar el último SWITCH
-            LogicGate entrada2 = pilaCompuertas.pop(); // Sacar el penúltimo SWITCH
-
-            // Crear los cables
-            cables.add(new Cable(entrada1, nuevaCompuerta, 0));  // Conectar la primera entrada
-            cables.add(new Cable(entrada2, nuevaCompuerta, 1));  // Conectar la segunda entrada
-            repaint();
-
-            return nuevaCompuerta; // Retornar la nueva compuerta
-        } else {
-            System.out.println("No hay suficientes entradas para la compuerta AND.");
-            return null;
-        }
-    }
-
-    private void crearSwitch(char label, int posX, Stack<LogicGate> pilaCompuertas) {
-        // Verifica si el switch ya fue creado
-        boolean switchExists = gates.stream()
-                .anyMatch(gate -> gate instanceof SWITCH && ((SWITCH) gate).getLabel().equals(String.valueOf(label)));
-
-        // Si no existe, crear uno nuevo
-        if (!switchExists) {
-            SWITCH nuevoSwitch = new SWITCH(String.valueOf(label), posX, 50); // Usar 50 como posY
-            gates.add(nuevoSwitch);
-            switches.add(nuevoSwitch); // Añadir el switch a la lista de switches
-            pilaCompuertas.push(nuevoSwitch); // Agregar a la pila
-        }
-    }
 
     private void conectarSalidas() {
         Map<LogicGate, Integer> contadorEntradas = new HashMap<>(); // Mapa para llevar el control de entradas por compuerta
