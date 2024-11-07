@@ -10,7 +10,7 @@ public abstract class LogicGate {
     protected int numInputs; // Número de entradas
     protected ArrayList<Point> inputPoints;  // Lista de puntos de entrada
     public ArrayList<Cable> inputCables;  // Lista de cables de entrada
-    public Cable outputCable;  // Cable de salida
+    public ArrayList<Cable> outputCables;  // Cable de salida
 
     public LogicGate(int x, int y, int numInputs) {
         this.x = x;
@@ -18,6 +18,7 @@ public abstract class LogicGate {
         this.numInputs = numInputs;
         this.inputPoints = new ArrayList<>();
         this.inputCables = new ArrayList<>(numInputs); // Inicializar lista de cables de entrada
+        this.outputCables = new ArrayList<>();
         calculateInputPoints();  // Calcula la posición de las entradas
     }
     
@@ -98,12 +99,7 @@ public abstract class LogicGate {
     }
 }
 
-
-    public Cable getOutputCable() {
-        return outputCable;
-    }
-
-    public void setOutputCable(Cable outputCable) {
-        this.outputCable = outputCable;
+    public ArrayList<Cable> getOutputCables() {
+        return outputCables;
     }
 }
